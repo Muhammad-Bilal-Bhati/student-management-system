@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Students collection - role-based access
+    match /students/{studentId} {
+      // Teachers can read/write all students
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+      
+      // Students can only read their own data (if email matches)
+      allow read: if request.auth != null && 
+        request.auth.token.email == resource.data.email;
+    }
+    
+    // Classes collection - only teachers can manage
+    match /classes/{classId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Attendance collection - role-based access
+    match /attendance/{attendanceId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+      
+      allow read: if request.auth != null && 
+        request.auth.token.email == resource.data.studentEmail;
+    }
+  }
+}
